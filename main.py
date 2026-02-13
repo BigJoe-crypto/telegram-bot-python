@@ -8,7 +8,7 @@ from analysis import generate_daily_outlook, generate_signal, is_market_open
 
 # Load environment variables (BOT_TOKEN from Railway Variables)
 load_dotenv()
-bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
+bot = telebot.TeleBot(os.getenv('TELEGRAM_BOT_TOKEN'))
 
 # Your personal Telegram chat ID
 USER_CHAT_ID = '1684090709'
