@@ -5,24 +5,21 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 from datetime import datetime
-from analysis import generate_daily_outlook, generate_signal, is_market_open
-import commands
+from analysis import generate_daily_outlook, generate_signal, is_market_open, fetch_news
 
 # Load environment variables
 load_dotenv()
 
-# Bot initialization - use BOT_TOKEN (the name you set in Railway Variables)
+# Bot initialization
 bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
-
-commands.register_commands(bot)
 
 # Your Telegram chat ID
 USER_CHAT_ID = '1684090709'
 
-# Scheduler (Lagos time = Africa/Lagos)
+# Scheduler (Lagos time)
 scheduler = BackgroundScheduler(timezone=pytz.timezone('Africa/Lagos'))
 
-# Daily outlook Monday–Thursday at 9:00 AM WAT
+# Daily outlook Mon–Thu at 9 AM WAT
 scheduler.add_job(
     lambda: bot.send_message(
         USER_CHAT_ID,
@@ -31,11 +28,10 @@ scheduler.add_job(
     CronTrigger(day_of_week='mon-thu', hour=9, minute=0)
 )
 
-# Check for trading signals every 5 minutes during London/NY sessions
+# Signal check every 5 min during sessions
 def monitor_signals():
     now = datetime.utcnow()
     hour_utc = now.hour
-    # London session ~08:00–16:00 UTC, NY ~13:00–21:00 UTC
     if (8 <= hour_utc <= 16) or (13 <= hour_utc <= 21):
         if is_market_open():
             signal = generate_signal()
@@ -44,15 +40,45 @@ def monitor_signals():
 
 scheduler.add_job(monitor_signals, 'interval', minutes=5)
 
-# Daily holiday/weekend check at 8:00 AM UTC
+# Holiday check
 scheduler.add_job(
-    lambda: bot.send_message(USER_CHAT_ID, "Gold market is closed today (holiday or weekend). No signals will be generated.")
-    if not is_market_open() else None,
+    lambda: bot.send_message(USER_CHAT_ID, "Gold market closed today.") if not is_market_open() else None,
     CronTrigger(hour=8, minute=0)
 )
 
-# Start scheduler
 scheduler.start()
 
-print("Bot started - polling and scheduling active")
+# --- Command Handlers (moved here so 'bot' is already defined) ---
+
+@bot.message_handler(commands=['start', 'help'])
+def start_help(message):
+    text = (
+        "Hello Joseph! I'm your XAUUSD trading bot.\n\n"
+        "Commands:\n"
+        "/outlook → Today's market outlook\n"
+        "/signal → Current buy/sell signal\n"
+        "/news → Recent gold news\n"
+        "\nBot sends automatic outlook at 9 AM Mon–Thu."
+    )
+    bot.reply_to(message, text)
+
+@bot.message_handler(commands=['outlook'])
+def outlook(message):
+    bot.reply_to(message, generate_daily_outlook())
+
+@bot.message_handler(commands=['signal'])
+def signal_cmd(message):
+    sig = generate_signal()
+    bot.reply_to(message, sig or "No clear signal right now.")
+
+@bot.message_handler(commands=['news'])
+def news_cmd(message):
+    bot.reply_to(message, fetch_news())
+
+# Optional: reply to any non-command text
+@bot.message_handler(func=lambda message: True)
+def echo(message):
+    bot.reply_to(message, "Unknown command. Try /start or /help.")
+
+print("Handlers registered - starting polling")
 bot.polling(none_stop=True)
