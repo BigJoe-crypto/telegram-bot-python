@@ -4,19 +4,22 @@ import os
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
+from datetime import datetime
 from analysis import generate_daily_outlook, generate_signal, is_market_open
 
-# Load environment variables (BOT_TOKEN from Railway Variables)
+# Load environment variables
 load_dotenv()
-bot = telebot.TeleBot(os.getenv('TELEGRAM_BOT_TOKEN'))
 
-# Your personal Telegram chat ID
+# Bot initialization - use BOT_TOKEN (the name you set in Railway Variables)
+bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
+
+# Your Telegram chat ID
 USER_CHAT_ID = '1684090709'
 
-# Scheduler for automated messages (Lagos time = WAT = Africa/Lagos)
+# Scheduler (Lagos time = Africa/Lagos)
 scheduler = BackgroundScheduler(timezone=pytz.timezone('Africa/Lagos'))
 
-# 1. Send daily outlook Monday–Thursday at 9:00 AM WAT
+# Daily outlook Monday–Thursday at 9:00 AM WAT
 scheduler.add_job(
     lambda: bot.send_message(
         USER_CHAT_ID,
@@ -25,7 +28,7 @@ scheduler.add_job(
     CronTrigger(day_of_week='mon-thu', hour=9, minute=0)
 )
 
-# 2. Check for trading signals every 5 minutes during London/NY sessions
+# Check for trading signals every 5 minutes during London/NY sessions
 def monitor_signals():
     now = datetime.utcnow()
     hour_utc = now.hour
@@ -38,16 +41,15 @@ def monitor_signals():
 
 scheduler.add_job(monitor_signals, 'interval', minutes=5)
 
-# 3. Daily holiday/weekend check at 8:00 AM UTC
-def holiday_check():
-    if not is_market_open():
-        bot.send_message(USER_CHAT_ID, "Gold market is closed today (holiday or weekend). No signals will be generated.")
+# Daily holiday/weekend check at 8:00 AM UTC
+scheduler.add_job(
+    lambda: bot.send_message(USER_CHAT_ID, "Gold market is closed today (holiday or weekend). No signals will be generated.")
+    if not is_market_open() else None,
+    CronTrigger(hour=8, minute=0)
+)
 
-scheduler.add_job(holiday_check, CronTrigger(hour=8, minute=0))
-
-# Start the scheduler
+# Start scheduler
 scheduler.start()
 
-# Start the bot (polling mode – Railway keeps it alive)
-print("Bot is running...")
+print("Bot started - polling and scheduling active")
 bot.polling(none_stop=True)
