@@ -6,12 +6,15 @@ from apscheduler.triggers.cron import CronTrigger
 import pytz
 from datetime import datetime
 from analysis import generate_daily_outlook, generate_signal, is_market_open
+import commands
 
 # Load environment variables
 load_dotenv()
 
 # Bot initialization - use BOT_TOKEN (the name you set in Railway Variables)
 bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
+
+commands.register_commands(bot)
 
 # Your Telegram chat ID
 USER_CHAT_ID = '1684090709'
