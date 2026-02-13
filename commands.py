@@ -14,6 +14,9 @@ def register_commands(bot: TeleBot):
     ]
     
     bot.set_my_commands(commands)
+# ... (your existing code: imports, bot init, scheduler, etc.)
+
+# Command handlers from commands.py
 from analysis import generate_daily_outlook, generate_signal, fetch_news
 
 @bot.message_handler(commands=['outlook'])
@@ -28,3 +31,11 @@ def signal_cmd(message):
 @bot.message_handler(commands=['news'])
 def news_cmd(message):
     bot.reply_to(message, fetch_news())
+
+# Optional: welcome message
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(message, "Hello Joseph! Bot is alive.\nCommands: /outlook /signal /news")
+
+print("Handlers registered - starting polling")
+bot.polling(none_stop=True)
