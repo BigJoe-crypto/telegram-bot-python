@@ -14,3 +14,17 @@ def register_commands(bot: TeleBot):
     ]
     
     bot.set_my_commands(commands)
+from analysis import generate_daily_outlook, generate_signal, fetch_news
+
+@bot.message_handler(commands=['outlook'])
+def outlook(message):
+    bot.reply_to(message, generate_daily_outlook())
+
+@bot.message_handler(commands=['signal'])
+def signal_cmd(message):
+    sig = generate_signal()
+    bot.reply_to(message, sig or "No signal right now.")
+
+@bot.message_handler(commands=['news'])
+def news_cmd(message):
+    bot.reply_to(message, fetch_news())
