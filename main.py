@@ -1,44 +1,53 @@
-import os
-import time
 import telebot
 from dotenv import load_dotenv
-from commands import register_commands
+import os
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+from analysis import generate_daily_outlook, generate_signal, is_market_open
 
-# Load environment variables
+# Load environment variables (BOT_TOKEN from Railway Variables)
 load_dotenv()
+bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
 
-# Replace 'TELEGRAM_BOT_TOKEN' with the token you received from BotFather
-TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-try:
-    bot = telebot.TeleBot(TOKEN)
-    register_commands(bot)
+# Your personal Telegram chat ID
+USER_CHAT_ID = '1684090709'
 
-    @bot.message_handler(commands=['start', 'hello'])
-    def send_welcome(message):
-        """
-        Handle '/start' and '/hello' commands.
+# Scheduler for automated messages (Lagos time = WAT = Africa/Lagos)
+scheduler = BackgroundScheduler(timezone=pytz.timezone('Africa/Lagos'))
 
-        Args:
-            message (telebot.types.Message): The message object.
-        """
-        bot.reply_to(message, "Hello! I'm a simple Telegram bot.")
+# 1. Send daily outlook Monday–Thursday at 9:00 AM WAT
+scheduler.add_job(
+    lambda: bot.send_message(
+        USER_CHAT_ID,
+        f"Good morning, Joseph! Here's today's XAUUSD outlook:\n\n{generate_daily_outlook()}"
+    ),
+    CronTrigger(day_of_week='mon-thu', hour=9, minute=0)
+)
 
-    @bot.message_handler(func=lambda msg: True)
-    def echo_all(message):
-        """
-        Echo all incoming text messages back to the user.
+# 2. Check for trading signals every 5 minutes during London/NY sessions
+def monitor_signals():
+    now = datetime.utcnow()
+    hour_utc = now.hour
+    # London session ~08:00–16:00 UTC, NY ~13:00–21:00 UTC
+    if (8 <= hour_utc <= 16) or (13 <= hour_utc <= 21):
+        if is_market_open():
+            signal = generate_signal()
+            if signal:
+                bot.send_message(USER_CHAT_ID, signal)
 
-        Args:
-            message (telebot.types.Message): The message object.
-        """
-        bot.reply_to(message, message.text)
+scheduler.add_job(monitor_signals, 'interval', minutes=5)
 
-    # Remove webhook to avoid conflicts with polling
-    bot.delete_webhook(drop_pending_updates=True)
-    bot.polling()
+# 3. Daily holiday/weekend check at 8:00 AM UTC
+def holiday_check():
+    if not is_market_open():
+        bot.send_message(USER_CHAT_ID, "Gold market is closed today (holiday or weekend). No signals will be generated.")
 
-except Exception as e:
-    print(f"CRITICAL ERROR: Failed to initialize bot with provided token. Error: {e}")
-    print("The application will hang to prevent a restart loop. Please fix the TELEGRAM_BOT_TOKEN environment variable.")
-    while True:
-        time.sleep(3600)
+scheduler.add_job(holiday_check, CronTrigger(hour=8, minute=0))
+
+# Start the scheduler
+scheduler.start()
+
+# Start the bot (polling mode – Railway keeps it alive)
+print("Bot is running...")
+bot.polling(none_stop=True)
