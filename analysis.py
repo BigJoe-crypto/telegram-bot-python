@@ -25,18 +25,47 @@ def is_market_open():
     return True
 
 def fetch_news():
+    news_text = "Daily Gold News:\n\n"
+
+    # 1. From Investing.com (your current source)
     try:
-        time.sleep(1)  # polite delay
         url = 'https://www.investing.com/commodities/gold-news'
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        r = requests.get(url, headers=headers, timeout=15)
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(r.text, 'html.parser')
-        articles = soup.find_all('article', class_='js-article-item', limit=3)
-        if not articles:
-            return "No recent news articles found."
-        return '\n'.join([f"- {a.find('a', class_='title').text.strip()}: {a.find('p').text.strip()}" for a in articles])
-    except Exception as e:
-        return f"News fetch error: {str(e)}"
+        articles = soup.find_all('article', class_='js-article-item', limit=2)
+        news_text += "From Investing.com:\n"
+        for a in articles:
+            title = a.find('a', class_='title').text.strip()
+            news_text += f"- {title}\n"
+    except:
+        news_text += "Investing.com error\n"
+
+    # 2. From Google News (using RSS feed for "gold price news")
+    try:
+        import feedparser  # Add "feedparser>=6.0" to pyproject.toml dependencies
+        rss_url = 'https://news.google.com/rss/search?q=gold+price+news+when:1d&hl=en-US&gl=US&ceid=US:en'
+        feed = feedparser.parse(rss_url)
+        news_text += "\nFrom Google News:\n"
+        for entry in feed.entries[:2]:
+            news_text += f"- {entry.title}\n"
+    except:
+        news_text += "Google News error (add feedparser to dependencies)\n"
+
+    # 3. From Kitco.com
+    try:
+        url = 'https://www.kitco.com/gold-price-today-usa/'
+        r = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        articles = soup.find_all('div', class_='news-item', limit=2)  # Adjust class if changed
+        news_text += "\nFrom Kitco:\n"
+        for a in articles:
+            title = a.find('a').text.strip()
+            news_text += f"- {title}\n"
+    except:
+        news_text += "Kitco error\n"
+
+    return news_text or "No news found today."
 
 def fetch_ohlcv(timeframe, limit=200):
     time.sleep(1.5)  # avoid rate limits on Binance public API
