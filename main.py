@@ -6,6 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 import pytz
 from datetime import datetime
 from analysis import generate_daily_outlook, generate_signal, is_market_open
+import commands
 
 # Load environment variables
 load_dotenv()
