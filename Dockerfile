@@ -23,7 +23,7 @@ ENV UV_PYTHON_DOWNLOADS=never \
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies (no dev, skip project itself)
-RUN uv sync --locked --no-dev --no-install-project
+RUN uv sync --no-dev --no-install-project
 
 # Copy application code
 COPY . .
