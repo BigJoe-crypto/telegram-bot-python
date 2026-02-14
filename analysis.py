@@ -91,6 +91,15 @@ def fetch_ohlcv(timeframe, limit=200):
         print(f"CCXT fetch error ({timeframe}): {str(e)}")
         return pd.DataFrame()
 
+def get_live_gold_price():
+    try:
+        ticker = exchange.fetch_ticker('XAUUSD')
+        price = ticker['last']
+        change = ticker['percentage'] if 'percentage' in ticker else 0
+        return f"Live XAUUSD Price: ${price:.2f} (Change: {change:.2f}%)"
+    except Exception as e:
+        return f"Live price error: {str(e)}"
+
 def generate_daily_outlook():
     if not is_market_open():
         return "Gold market is closed today (holiday or weekend). No analysis available."
