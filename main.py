@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
-USER_CHAT_ID = os.getenv('USER_CHAT_ID')  # ← put your chat ID in .env
+USER_CHAT_ID = os.getenv('USER_CHAT_ID')   # ← put your chat ID in .env
 
 if not BOT_TOKEN:
     logger.error("BOT_TOKEN not found in .env file")
@@ -94,6 +94,8 @@ def monitor_signals():
 
     now_utc = datetime.utcnow()
     hour_utc = now_utc.hour
+
+    # London + early NY session roughly (adjust as needed)
     active_hours = (7 <= hour_utc <= 17) or (12 <= hour_utc <= 21)
 
     if not active_hours or not is_market_open():
@@ -107,6 +109,7 @@ def monitor_signals():
                 f"🔔 New XAUUSD Signal Detected!\n\n{signal_text}"
             )
             logger.info("Signal notification sent")
+        # else: silent — no spam
     except Exception as e:
         logger.error(f"Error in signal monitoring: {e}")
 
@@ -145,10 +148,10 @@ def start_help(message):
     text = (
         "Hello Joseph! 👋 I'm your personal XAUUSD (Gold) trading assistant.\n\n"
         "Available commands:\n"
-        "• /outlook → Today's market bias & key levels\n"
-        "• /signal → Current best buy/sell setup (if any)\n"
-        "• /news → Latest gold-related news\n"
-        "• /price → Current live gold price\n\n"
+        "• /outlook  →  Today's market bias & key levels\n"
+        "• /signal   →  Current best buy/sell setup (if any)\n"
+        "• /news     →  Latest gold-related news\n"
+        "• /price    →  Current live gold price\n\n"
         "I also send:\n"
         "• Daily outlook at 9:00 AM WAT (Mon–Thu)\n"
         "• Signal alerts during active market hours (every 5 min check)\n\n"
@@ -156,9 +159,11 @@ def start_help(message):
     )
     bot.reply_to(message, text)
 
+
 @bot.message_handler(commands=['outlook'])
 def outlook_handler(message):
     bot.reply_to(message, generate_daily_outlook())
+
 
 @bot.message_handler(commands=['signal'])
 def signal_handler(message):
@@ -166,10 +171,12 @@ def signal_handler(message):
     reply = sig if sig else "No clear signal at the moment."
     bot.reply_to(message, reply)
 
+
 @bot.message_handler(commands=['news'])
 def news_handler(message):
     news_text = fetch_news()
     bot.reply_to(message, news_text if news_text else "Could not fetch news right now.")
+
 
 @bot.message_handler(commands=['price'])
 def price_handler(message):
@@ -177,6 +184,7 @@ def price_handler(message):
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     full_text = f"{price_text}\n\n(Last updated: {timestamp})"
     bot.reply_to(message, full_text)
+
 
 # Fallback for unknown messages/commands
 @bot.message_handler(func=lambda m: True)
@@ -186,26 +194,14 @@ def unknown_message(message):
         "Sorry, I don't understand that.\nUse /start or /help to see available commands."
     )
 
+
 # ────────────────────────────────────────────────
-# Start the bot + MetaTrader5 test
+# Start the bot
 # ────────────────────────────────────────────────
 
 if __name__ == "__main__":
     logger.info("Starting Gold Signals Telegram Bot...")
-
-    # Test if MetaTrader5 is installed
-    try:
-        import MetaTrader5 as mt5
-        logger.info("SUCCESS: MetaTrader5 package is installed")
-        logger.info(f"MetaTrader5 version: {mt5.__version__}")
-        logger.info(f"Module location: {mt5.__file__}")
-    except ImportError:
-        logger.warning("MetaTrader5 package is NOT installed (ImportError)")
-    except Exception as e:
-        logger.error(f"Unexpected error while importing MetaTrader5: {str(e)}")
-
     print("Bot is running... Press Ctrl+C to stop")
-
     try:
         bot.infinity_polling(
             timeout=30,
