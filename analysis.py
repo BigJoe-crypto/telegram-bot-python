@@ -111,27 +111,81 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
         return f"Outlook generation error: {str(e)}"
 
 def get_live_gold_price():
+    """
+    Try to get live price from APIs first.
+    If all APIs fail → return list of reliable free websites with live gold charts.
+    """
+    price_sources = []
+    error_details = []
+
+    # 1. GoldAPI (sometimes works without key for basic calls)
     try:
-        # Try GoldAPI directly (more reliable for XAU/USD)
         url = "https://www.goldapi.io/api/XAU/USD"
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=8)
         data = r.json()
         price = data.get('price')
         if price:
-            return f"Live XAUUSD Price (GoldAPI): ${price:.2f}"
+            return f"Live XAUUSD Price: *${price:,.2f}* (from GoldAPI)\nUpdated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        else:
+            error_details.append("GoldAPI: no price in response")
     except Exception as e:
-        pass
-   
-    # Fallback to another source
+        error_details.append(f"GoldAPI failed: {str(e)}")
+
+    # 2. Metals.live fallback
     try:
-        url = "https://api.metals.live/v1/spot/gold"
-        r = requests.get(url, timeout=10)
+        url = "https://api.metals.live/v1/spot"
+        r = requests.get(url, timeout=8)
         data = r.json()
-        price = data.get('gold')
-        if price:
-            return f"Live XAUUSD Price (Metals.live): ${price:.2f}"
-    except Exception as fallback_error:
-        return f"Price fetch error: {str(e)} | Fallback error: {str(fallback_error)}"
+        for item in data:
+            if isinstance(item, dict) and 'gold' in item:
+                price = item['gold']
+                return f"Live XAUUSD Price: *${price:,.2f}* (from Metals.live)\nUpdated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        error_details.append("Metals.live: no gold price found")
+    except Exception as e:
+        error_details.append(f"Metals.live failed: {str(e)}")
+
+    # If both APIs failed → give useful websites with live charts
+    websites = [
+        {
+            "name": "TradingView — XAUUSD (Gold Spot)",
+            "url": "https://www.tradingview.com/chart/?symbol=XAUUSD",
+            "desc": "Best free live chart. Interactive, many timeframes, indicators, drawing tools."
+        },
+        {
+            "name": "Investing.com — Gold Live Chart",
+            "url": "https://www.investing.com/commodities/gold-chart",
+            "desc": "Real-time gold chart + news + technical analysis."
+        },
+        {
+            "name": "Kitco — Live Gold Chart",
+            "url": "https://www.kitco.com/charts/livegold.html",
+            "desc": "Clean live gold price and chart. Popular among traders."
+        },
+        {
+            "name": "BullionVault — Live Gold Price",
+            "url": "https://www.bullionvault.com/gold-price-chart.do",
+            "desc": "Very accurate live spot gold price and chart."
+        },
+        {
+            "name": "FXStreet — Gold Chart",
+            "url": "https://www.fxstreet.com/rates-charts/gold",
+            "desc": "Live gold chart with economic calendar and forecasts."
+        }
+    ]
+
+    # Build nice Telegram-friendly response
+    msg = "⚠️ Could not fetch live price from APIs right now.\n\n"
+    msg += "Here are the best free websites with *live gold (XAUUSD) charts*:\n\n"
+
+    for site in websites:
+        msg += f"📊 *{site['name']}*\n"
+        msg += f"{site['desc']}\n"
+        msg += f"👉 {site['url']}\n\n"
+
+    msg += f"(Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')})\n"
+    msg += f"Debug: {', '.join(error_details)[:200]}..."  # short debug info
+
+    return msg
 
 def generate_signal():
     if not is_market_open():
