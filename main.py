@@ -203,6 +203,13 @@ if __name__ == "__main__":
     logger.info("Starting Gold Signals Telegram Bot...")
     print("Bot is running... Press Ctrl+C to stop")
     try:
+    import MetaTrader5 as mt5
+    print("MetaTrader5 imported successfully! Version:", mt5._version_)
+except ImportError as e:
+    print("MetaTrader5 NOT installed or import failed:", str(e))
+except Exception as e:
+    print("MetaTrader5 import error:", str(e))
+    try:
         bot.infinity_polling(
             timeout=30,
             long_polling_timeout=30,
