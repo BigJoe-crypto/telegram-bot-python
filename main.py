@@ -5,20 +5,30 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 from datetime import datetime
-from analysis import generate_daily_outlook, generate_signal, is_market_open, fetch_news
-import commands
-commands.register_commands(bot)
+from analysis import generate_daily_outlook, generate_signal, is_market_open, fetch_news, get_live_gold_price
 
-# Load environment variables
 load_dotenv()
-
-# Bot initialization
 bot = telebot.TeleBot(os.getenv('BOT_TOKEN'))
 
-# Your Telegram chat ID
 USER_CHAT_ID = '1684090709'
 
-# Scheduler (Lagos time)
+# Register all commands for the Telegram menu (appears when typing /)
+def register_bot_commands():
+    commands = [
+        telebot.types.BotCommand("start", "Start the bot"),
+        telebot.types.BotCommand("help", "Show help"),
+        telebot.types.BotCommand("outlook", "Get today's XAUUSD outlook"),
+        telebot.types.BotCommand("signal", "Check current buy/sell signal"),
+        telebot.types.BotCommand("news", "See recent gold news"),
+        telebot.types.BotCommand("price", "Get live gold price and chart"),
+    ]
+    bot.set_my_commands(commands)
+    print("Bot menu commands registered: /start, /outlook, /signal, /news, /price")
+
+# Call this right after bot creation
+register_bot_commands()
+
+# Scheduler setup
 scheduler = BackgroundScheduler(timezone=pytz.timezone('Africa/Lagos'))
 
 # Daily outlook Mon–Thu at 9 AM WAT
@@ -30,7 +40,7 @@ scheduler.add_job(
     CronTrigger(day_of_week='mon-thu', hour=9, minute=0)
 )
 
-# Signal check every 5 min during sessions
+# Signal monitoring every 5 min
 def monitor_signals():
     now = datetime.utcnow()
     hour_utc = now.hour
@@ -50,7 +60,7 @@ scheduler.add_job(
 
 scheduler.start()
 
-# --- Command Handlers (moved here so 'bot' is already defined) ---
+# Command Handlers (all in main.py so 'bot' is defined)
 
 @bot.message_handler(commands=['start', 'help'])
 def start_help(message):
@@ -60,7 +70,8 @@ def start_help(message):
         "/outlook → Today's market outlook\n"
         "/signal → Current buy/sell signal\n"
         "/news → Recent gold news\n"
-        "\nBot sends automatic outlook at 9 AM Mon–Thu."
+        "/price → Live gold price & chart\n"
+        "\nBot sends daily outlook at 9 AM Mon–Thu."
     )
     bot.reply_to(message, text)
 
@@ -68,10 +79,6 @@ def start_help(message):
 def outlook(message):
     bot.reply_to(message, generate_daily_outlook())
 
-@bot.message_handler(commands=['price', 'chart'])
-def price(message):
-    bot.reply_to(message, get_live_gold_price())
-    
 @bot.message_handler(commands=['signal'])
 def signal_cmd(message):
     sig = generate_signal()
@@ -81,10 +88,15 @@ def signal_cmd(message):
 def news_cmd(message):
     bot.reply_to(message, fetch_news())
 
-# Optional: reply to any non-command text
+@bot.message_handler(commands=['price', 'chart'])
+def price_chart(message):
+    price_info = get_live_gold_price()
+    bot.reply_to(message, price_info)
+
+# Catch-all for unknown messages
 @bot.message_handler(func=lambda message: True)
 def echo(message):
     bot.reply_to(message, "Unknown command. Try /start or /help.")
 
-print("Handlers registered - starting polling")
+print("All handlers and menu registered - starting polling")
 bot.polling(none_stop=True)
