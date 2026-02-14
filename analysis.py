@@ -26,32 +26,34 @@ def is_market_open():
     return True
 
 def fetch_news():
-    news_text = "Daily Gold News (Latest):\n\n"
+    news_text = "Daily Gold News:\n\n"
 
-    # RSS sources (more reliable than scraping)
-    sources = [
-        ("Google News", "https://news.google.com/rss/search?q=gold+price+news+when:1d&hl=en-US&gl=US&ceid=US:en"),
-        ("Reuters Gold", "https://www.reuters.com/arc/outboundfeeds/newsroom/?outputType=xml&source=tag:gold"),
-        ("Kitco News", "https://www.kitco.com/news/rss/all"),
-    ]
+    # 1. From Investing.com (your current source)
+    try:
+        url = 'https://www.investing.com/commodities/gold-news'
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        articles = soup.find_all('article', class_='js-article-item', limit=2)
+        news_text += "From Investing.com:\n"
+        for a in articles:
+            title = a.find('a', class_='title').text.strip()
+            news_text += f"- {title}\n"
+    except:
+        news_text += "Investing.com error\n"
 
-    for name, url in sources:
-        try:
-            time.sleep(1.5)  # polite delay
-            feed = feedparser.parse(url)
-            if feed.entries:
-                news_text += f"From {name}:\n"
-                for entry in feed.entries[:3]:  # Top 3 recent
-                    title = entry.title
-                    link = entry.link if 'link' in entry else ""
-                    published = entry.published[:16] if 'published' in entry else ""
-                    news_text += f"- {title} ({published})\n{link}\n"
-            else:
-                news_text += f"From {name}: No recent articles\n"
-        except Exception as e:
-            news_text += f"From {name}: Error - {str(e)[:50]}...\n"
+    # 2. From Google News (using RSS feed for "gold price news")
+    try:
+        import feedparser  # Add "feedparser>=6.0" to pyproject.toml dependencies
+        rss_url = 'https://news.google.com/rss/search?q=gold+price+news+when:1d&hl=en-US&gl=US&ceid=US:en'
+        feed = feedparser.parse(rss_url)
+        news_text += "\nFrom Google News:\n"
+        for entry in feed.entries[:2]:
+            news_text += f"- {entry.title}\n"
+    except:
+        news_text += "Google News error (add feedparser to dependencies)\n"
 
-    return news_text.strip() or "No news available right now. Try again later."
+    return news_text or "No news found today."
     
 def fetch_ohlcv(timeframe, limit=200):
     time.sleep(1.5)  # avoid rate limits on Binance public API
