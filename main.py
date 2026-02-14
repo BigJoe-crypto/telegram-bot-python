@@ -90,10 +90,8 @@ def news_cmd(message):
 
 @bot.message_handler(commands=['price', 'chart'])
 def price_chart(message):
-    price = get_live_gold_price()
-    if "error" in price.lower():
-        price = get_live_gold_fallback()
-    bot.reply_to(message, price)
+    price_info = get_live_gold_price()
+    bot.reply_to(message, price_info
 
 # Catch-all for unknown messages
 @bot.message_handler(func=lambda message: True)
