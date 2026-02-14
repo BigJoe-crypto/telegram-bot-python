@@ -112,14 +112,12 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
         return f"Outlook generation error: {str(e)}"
 
   def get_live_gold_price():
-    try:
-        # Use Kraken (more reliable for your location than Binance)
+      try:
         ticker = exchange.fetch_ticker('XAU/USD')  # Kraken uses XAU/USD format
         price = ticker['last']
         change = ticker.get('percentage', 0)
         return f"Live XAUUSD Price (Kraken): ${price:.2f} (Change: {change:.2f}%)"
     except Exception as e:
-        # Fallback to GoldAPI.io (free, no key, very reliable)
         try:
             url = "https://www.goldapi.io/api/XAU/USD"
             r = requests.get(url, timeout=10)
