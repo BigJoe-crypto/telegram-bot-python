@@ -11,6 +11,7 @@ def register_commands(bot: TeleBot):
     commands = [
         BotCommand("start", "Start the bot and see welcome message"),
         BotCommand("outlook", "Get today's XAUUSD daily outlook"),
+        BotCommand("price", "Live gold price"),
         BotCommand("signal", "Check current buy/sell signal"),
         BotCommand("news", "See recent gold news headlines"),
         BotCommand("help", "Show all available commands"),
@@ -34,14 +35,14 @@ def start_help(message):
     )
     bot.reply_to(message, text)
 
-@bot.message_handler(commands=['price', 'chart'])
-def price(message):
-    bot.reply_to(message, get_live_gold_price())
-    
 @bot.message_handler(commands=['outlook'])
 def outlook(message):
     bot.reply_to(message, generate_daily_outlook())
 
+@bot.message_handler(commands=['price', 'chart'])
+def price(message):
+    bot.reply_to(message, get_live_gold_price())
+    
 @bot.message_handler(commands=['signal'])
 def signal_cmd(message):
     sig = generate_signal()
