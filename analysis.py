@@ -26,59 +26,32 @@ def is_market_open():
     return True
 
 def fetch_news():
-    news_text = "Daily Gold News:\n\n"
+    news_text = "Daily Gold News (Latest):\n\n"
 
+    # RSS sources (more reliable than scraping)
     sources = [
-        {
-            "name": "Google News",
-            "url": "https://news.google.com/rss/search?q=gold+price+news+when:1d&hl=en-US&gl=US&ceid=US:en",
-            "type": "rss"
-        },
-        {
-            "name": "Reuters Gold",
-            "url": "https://www.reuters.com/arc/outboundfeeds/newsroom/?outputType=xml&source=tag:gold",
-            "type": "rss"
-        },
-        {
-            "name": "Kitco News",
-            "url": "https://www.kitco.com/news/rss/all",
-            "type": "rss"
-        },
-        {
-            "name": "Investing.com Gold News",
-            "url": "https://www.investing.com/commodities/gold-news",
-            "type": "scrape"
-        }
+        ("Google News", "https://news.google.com/rss/search?q=gold+price+news+when:1d&hl=en-US&gl=US&ceid=US:en"),
+        ("Reuters Gold", "https://www.reuters.com/arc/outboundfeeds/newsroom/?outputType=xml&source=tag:gold"),
+        ("Kitco News", "https://www.kitco.com/news/rss/all"),
     ]
 
-    for source in sources:
+    for name, url in sources:
         try:
-            time.sleep(1.5)  # Polite delay to avoid rate limits
-            if source["type"] == "rss":
-                feed = feedparser.parse(source["url"])
-                if feed.entries:
-                    news_text += f"From {source['name']}:\n"
-                    for entry in feed.entries[:2]:  # Top 2 recent
-                        news_text += f"- {entry.title} ({entry.published[:10] if 'published' in entry else ''})\n"
-                else:
-                    news_text += f"From {source['name']}: No recent articles\n"
-            else:  # scrape for Investing.com
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-                r = requests.get(source["url"], headers=headers, timeout=15)
-                soup = BeautifulSoup(r.text, 'html.parser')
-                articles = soup.find_all('article', limit=2)  # Broader selector
-                if articles:
-                    news_text += f"From {source['name']}:\n"
-                    for a in articles:
-                        title_tag = a.find('a') or a.find('h3') or a.find('h2')
-                        title = title_tag.text.strip() if title_tag else "Untitled"
-                        news_text += f"- {title}\n"
-                else:
-                    news_text += f"From {source['name']}: No articles found (site may have changed)\n"
+            time.sleep(1.5)  # polite delay
+            feed = feedparser.parse(url)
+            if feed.entries:
+                news_text += f"From {name}:\n"
+                for entry in feed.entries[:3]:  # Top 3 recent
+                    title = entry.title
+                    link = entry.link if 'link' in entry else ""
+                    published = entry.published[:16] if 'published' in entry else ""
+                    news_text += f"- {title} ({published})\n{link}\n"
+            else:
+                news_text += f"From {name}: No recent articles\n"
         except Exception as e:
-            news_text += f"From {source['name']}: Error - {str(e)[:50]}...\n"
+            news_text += f"From {name}: Error - {str(e)[:50]}...\n"
 
-    return news_text.strip() or "No news available at the moment. Try again later."
+    return news_text.strip() or "No news available right now. Try again later."
     
 def fetch_ohlcv(timeframe, limit=200):
     time.sleep(1.5)  # avoid rate limits on Binance public API
@@ -91,14 +64,6 @@ def fetch_ohlcv(timeframe, limit=200):
         print(f"CCXT fetch error ({timeframe}): {str(e)}")
         return pd.DataFrame()
 
-def get_live_gold_price():
-    try:
-        ticker = exchange.fetch_ticker('XAUUSD')
-        price = ticker['last']
-        change = ticker['percentage'] if 'percentage' in ticker else 0
-        return f"Live XAUUSD Price: ${price:.2f} (Change: {change:.2f}%)"
-    except Exception as e:
-        return f"Live price error: {str(e)}"
 
 def generate_daily_outlook():
     if not is_market_open():
@@ -143,6 +108,15 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
         """.strip()
     except Exception as e:
         return f"Outlook generation error: {str(e)}"
+
+def get_live_gold_price():
+    try:
+        ticker = exchange.fetch_ticker('XAUUSD')
+        price = ticker['last']
+        change = ticker['percentage'] if 'percentage' in ticker else 0
+        return f"Live XAUUSD Price: ${price:.2f} (Change: {change:.2f}%)"
+    except Exception as e:
+        return f"Live price error: {str(e)}"
 
 def generate_signal():
     if not is_market_open():
