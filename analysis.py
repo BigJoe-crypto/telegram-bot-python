@@ -111,7 +111,7 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
     except Exception as e:
         return f"Outlook generation error: {str(e)}"
 
-  def get_live_gold_price():
+def get_live_gold_price():
     try:
         ticker = exchange.fetch_ticker('XAU/USD')
         price = ticker['last']
