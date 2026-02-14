@@ -113,19 +113,26 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
 
 def get_live_gold_price():
     try:
-        ticker = exchange.fetch_ticker('XAU/USD')
-        price = ticker['last']
-        change = ticker.get('percentage', 0)
-        return f"Live XAUUSD Price (Kraken): ${price:.2f} (Change: {change:.2f}%)"
+        # Try GoldAPI directly (more reliable for XAU/USD)
+        url = "https://www.goldapi.io/api/XAU/USD"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        price = data.get('price')
+        if price:
+            return f"Live XAUUSD Price (GoldAPI): ${price:.2f}"
     except Exception as e:
-        try:
-            url = "https://www.goldapi.io/api/XAU/USD"
-            r = requests.get(url, timeout=10)
-            data = r.json()
-            price = data['price']
-            return f"Live XAUUSD Price (GoldAPI fallback): ${price:.2f}"
-        except Exception as fallback_error:
-            return f"Price fetch error: {str(e)} | Fallback error: {str(fallback_error)}"
+        pass
+    
+    # Fallback to another source
+    try:
+        url = "https://api.metals.live/v1/spot/gold"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+        price = data.get('gold')
+        if price:
+            return f"Live XAUUSD Price (Metals.live): ${price:.2f}"
+    except Exception as fallback_error:
+        return f"Price fetch error: {str(e)} | Fallback error: {str(fallback_error)}"
             
 def generate_signal():
     if not is_market_open():
