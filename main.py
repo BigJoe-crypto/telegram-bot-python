@@ -66,6 +66,10 @@ def start_help(message):
 def outlook(message):
     bot.reply_to(message, generate_daily_outlook())
 
+@bot.message_handler(commands=['price', 'chart'])
+def price(message):
+    bot.reply_to(message, get_live_gold_price())
+    
 @bot.message_handler(commands=['signal'])
 def signal_cmd(message):
     sig = generate_signal()
