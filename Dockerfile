@@ -29,7 +29,7 @@ RUN uv sync --no-dev --no-install-project
 COPY . .
 
 # Install the project in non-editable mode
-RUN uv sync --locked --no-dev --no-editable
+RUN uv sync --no-dev --no-editable
 
 # Run bot
 CMD ["uv", "run", "main.py"]
