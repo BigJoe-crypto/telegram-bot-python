@@ -111,31 +111,24 @@ Direction today: Look for {'bullish breaks above supply' if 'HH' in structure el
     except Exception as e:
         return f"Outlook generation error: {str(e)}"
 
-   # Change to Kraken (public, no key, reliable for XAUUSD)
-exchange = ccxt.kraken({'enableRateLimit': True})
-
-# or Coinbase (also good)
-# exchange = ccxt.coinbase({'enableRateLimit': True})
-
-# Keep your fetch_ticker and fetch_ohlcv functions the same
-def get_live_gold_price():
+  def get_live_gold_price():
     try:
-        ticker = exchange.fetch_ticker('XAU/USD')  # Note: Kraken uses XAU/USD, not XAUUSD
+        # Use Kraken (more reliable for your location than Binance)
+        ticker = exchange.fetch_ticker('XAU/USD')  # Kraken uses XAU/USD format
         price = ticker['last']
         change = ticker.get('percentage', 0)
-        return f"Live XAUUSD Price (from Kraken): ${price:.2f} (Change: {change:.2f}%)"
+        return f"Live XAUUSD Price (Kraken): ${price:.2f} (Change: {change:.2f}%)"
     except Exception as e:
-        return f"Live price error: {str(e)}"
-def get_live_gold_fallback():
-    try:
-        url = "https://www.goldapi.io/api/XAU/USD"
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        price = data['price']
-        return f"Live XAUUSD Price (from GoldAPI fallback): ${price:.2f}"
-    except Exception as e:
-        return f"Fallback price error: {str(e)}"
-
+        # Fallback to GoldAPI.io (free, no key, very reliable)
+        try:
+            url = "https://www.goldapi.io/api/XAU/USD"
+            r = requests.get(url, timeout=10)
+            data = r.json()
+            price = data['price']
+            return f"Live XAUUSD Price (GoldAPI fallback): ${price:.2f}"
+        except Exception as fallback_error:
+            return f"Price fetch error: {str(e)} | Fallback error: {str(fallback_error)}"
+            
 def generate_signal():
     if not is_market_open():
         return "Market closed. No signal available."
