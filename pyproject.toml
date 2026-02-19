@@ -1,4 +1,4 @@
-[tool.poetry]
+[project]
 name = "gold-trading-bot"
 version = "0.1.0"
 description = "Multi-timeframe gold trading alert bot"
