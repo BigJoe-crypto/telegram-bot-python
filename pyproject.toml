@@ -2,7 +2,6 @@
 name = "gold-trading-bot"
 version = "0.1.0"
 description = "Multi-timeframe gold trading alert bot"
-readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
